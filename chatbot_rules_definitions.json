@@ -1,0 +1,26 @@
+# set of rules for chatbots replays text processing
+{
+    "character_replacements": [
+        ["~`!#$%^*()[]\"{}|;🧩✦<>", ""],
+        [":","."]
+    ],
+    "string_replacements": [
+        ["", ""]
+    ],
+    "block_replacements": [
+        [" START OF FILE", " END OF FILE", ""],
+        ["```", "```", ""],
+        ["╭", "╯", ""] 
+    ],
+    "regex_patterns_replacements": [
+        ["\\*\\*(.*?)\\*\\*", "\\1"], 
+        ["\\*(.*?)\\*", "\\1"], 
+        ["^#+\\s*", ""], 
+        ["!\\[.*?\\]\\(.*?\\)", ""], 
+        ["\\[(.*?)\\]\\(.*?\\)", "\\1"], 
+        ["·", ""], 
+        ["→", ""], 
+        ["¬", ""], 
+        ["[\\U0001F600-\\U0001F64F\\U0001F300-\\U0001F5FF\\U0001F680-\\U0001F6FF\\U0001F1E0-\\U0001F1FF]", ""]
+       ]
+}

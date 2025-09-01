@@ -1,0 +1,18 @@
+# set of rules for e-book text processing
+{
+    "character_replacements": [
+        [":", "."]
+    ],
+    "string_replacements": [
+        ["", ""]
+    ],
+    "block_replacements": [
+        ["╭", "╯", ""]
+    ],
+    "regex_patterns_replacements": [
+        ["-$", ""],
+        ["^\\d+$", ""],
+        ["(\\w)-\\n(\\w)", "\\1\\2"],
+        ["(\\w)-\\s*\\n\\s*(\\w)", "\\1\\2"]
+    ]
+}
