@@ -223,6 +223,10 @@ class UIManager:
         self.piper_group = QGroupBox("Voice & Advanced Settings")
         piper_form = QFormLayout(self.piper_group)
 
+        # Rule selection
+        self.rule_combo = QComboBox()
+        piper_form.addRow("Rule Set", self.rule_combo)
+
         # Model selection row
         model_row = QHBoxLayout()
         self.model_combo = QComboBox()
@@ -329,6 +333,23 @@ class UIManager:
         main_layout.addLayout(status_bar)
 
         self.main_window.resize(520, 680)
+        self.scan_and_populate_rule_sets()
+
+    def scan_and_populate_rule_sets(self):
+        self.main_window.log_message("[INFO] Scanning for rule sets...")
+        self.rule_combo.clear()
+        rules_dir = "txt_eng_rules"
+        try:
+            if not os.path.isdir(rules_dir):
+                self.main_window.log_message(f"[WARN] Rules directory not found: {rules_dir}", "orange")
+                return
+
+            rule_files = sorted([f for f in os.listdir(rules_dir) if f.endswith(".json")])
+            self.rule_combo.addItems(rule_files)
+            self.main_window.log_message(f"Found rule sets: {rule_files}", "green")
+
+        except Exception as e:
+            self.main_window.log_message(f"[ERROR] Failed to scan for rule sets: {e}", "red")
 
     def select_piper_path(self):
         path = QFileDialog.getExistingDirectory(self.main_window, "Select Piper Models Directory", self.main_window.piper_path)

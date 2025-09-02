@@ -29,10 +29,11 @@ class MainWindow(QMainWindow):
         self.tray_manager = TrayManager(self)
         self.hotkey_manager = HotkeyManager()
         self.process_manager = ProcessManager()
-        self.text_processor = TextProcessorEngine(rules_file_path=os.path.join(os.path.dirname(__file__), 'rules_definitions.json'))
-        self.mode_controller = ModeController(self.text_processor)
+        self.text_processor = None
+        self.mode_controller = None
         
         self.setup_signals()
+        self._on_rule_changed(self.ui.rule_combo.currentText()) # Initial setup
         self.load_settings()
         self.log_message("[INFO] App Initialized.")
 
@@ -43,6 +44,7 @@ class MainWindow(QMainWindow):
         self.process_manager.process_finished.connect(self.on_process_finished)
 
         # UI Signals
+        self.ui.rule_combo.currentTextChanged.connect(self._on_rule_changed)
         self.ui.mode_slider.valueChanged.connect(self.update_ui_mode)
         self.ui.model_combo.currentTextChanged.connect(self.ui.load_model_config)
         self.ui.always_on_top_cb.toggled.connect(self.toggle_always_on_top)
@@ -181,6 +183,15 @@ class MainWindow(QMainWindow):
             self.ui.pause_btn.setEnabled(False)
             self.ui.pause_btn.setText("⏸ Pause")
 
+    def _on_rule_changed(self, rule_file: str):
+        if not rule_file:
+            return
+        self.log_message(f"Activating rule set: {rule_file}", "green")
+        rules_dir = "txt_eng_rules"
+        rule_path = os.path.join(rules_dir, rule_file)
+        self.text_processor = TextProcessorEngine(rules_file_path=rule_path)
+        self.mode_controller = ModeController(self.text_processor)
+
     def update_ui_mode(self, value: int):
         self.ui.stacked_widget.setCurrentIndex(value)
         mode_names = {0: 'Custom', 1: 'Piper TTS', 2: 'Ping', 3: 'Echo'}
@@ -259,6 +270,7 @@ class MainWindow(QMainWindow):
             'mode': self.ui.mode_slider.value(),
             'model': self.ui.model_combo.currentText(),
             'speaker': self.ui.speaker_combo.currentData(),
+            'rule_set': self.ui.rule_combo.currentText(),
             'geometry': self.saveGeometry().toBase64().data().decode()
         }
 
@@ -295,6 +307,12 @@ class MainWindow(QMainWindow):
             index = self.ui.speaker_combo.findData(saved_speaker_id)
             if index != -1:
                 self.ui.speaker_combo.setCurrentIndex(index)
+
+        saved_rule_set = s.get('rule_set')
+        if saved_rule_set:
+            index = self.ui.rule_combo.findText(saved_rule_set)
+            if index != -1:
+                self.ui.rule_combo.setCurrentIndex(index)
 
     def save_settings(self):
         """Saves current settings using the SettingsManager."""
