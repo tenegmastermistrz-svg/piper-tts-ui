@@ -1,10 +1,6 @@
 import sys, os, json, re, signal, subprocess, time, shlex, typing
 from datetime import datetime
 from pathlib import Path
-# try:
-from pynput import keyboard
-# except ImportError:
-    # keyboard = None
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QFileDialog, QStyleFactory)
 from PyQt5.QtCore import Qt, QProcess, pyqtSignal, QByteArray
 import PyQt5.QtGui as QtGui
@@ -48,15 +44,15 @@ class MainWindow(QMainWindow):
 
         # UI Signals
         self.ui.mode_slider.valueChanged.connect(self.update_ui_mode)
-        self.ui.model_combo.currentTextChanged.connect(self.load_model_config)
+        self.ui.model_combo.currentTextChanged.connect(self.ui.load_model_config)
         self.ui.always_on_top_cb.toggled.connect(self.toggle_always_on_top)
         self.ui.opacity_slider.valueChanged.connect(self.update_opacity)
         self.ui.opacity_slider.sliderReleased.connect(self.update_opacity)
         self.ui.play_btn.clicked.connect(self.start_process)
         self.ui.pause_btn.clicked.connect(self.toggle_pause_process)
         self.ui.stop_btn.clicked.connect(self.stop_process)
-        self.ui.set_path_btn.clicked.connect(self.select_piper_path)
-        self.ui.rescan_btn.clicked.connect(self.scan_piper_models)
+        self.ui.set_path_btn.clicked.connect(self.ui.select_piper_path)
+        self.ui.rescan_btn.clicked.connect(self.ui.scan_piper_models)
         self.ui.preview_btn.clicked.connect(self.preview_voice)
         self.ui.volume_slider.valueChanged.connect(self.update_volume_icon)
         
@@ -132,7 +128,7 @@ class MainWindow(QMainWindow):
             'model': self.ui.model_combo.currentText(),
             'piper_path': self.piper_path,
             'speaker_id': self.ui.speaker_combo.currentData(),
-            'is_multi_speaker': self.is_multi_speaker(self.ui.model_combo.currentText()),
+            'is_multi_speaker': self.ui.is_multi_speaker(self.ui.model_combo.currentText()),
             'silence': self.ui.silence_spin.value(),
             'length': self.ui.length_spin.value(),
             'noise_s': self.ui.noise_scale_spin.value(),
@@ -197,64 +193,6 @@ class MainWindow(QMainWindow):
             self.ui.volume_icon.setText("🔉")
         else:
             self.ui.volume_icon.setText("🔊")
-
-    def select_piper_path(self):
-        path = QFileDialog.getExistingDirectory(self, "Select Piper Models Directory", self.piper_path)
-        if path and os.path.isdir(path):
-            self.piper_path = path
-            self.log_message(f"[INFO] Piper path set to: {self.piper_path}")
-            self.scan_piper_models()
-
-    def scan_piper_models(self):
-        self.log_message(f"[INFO] Scanning '{self.piper_path}'...")
-        current_model = self.ui.model_combo.currentText()
-        self.ui.model_combo.clear()
-        
-        try:
-            if not os.path.isdir(self.piper_path):
-                raise FileNotFoundError(f"Piper dir not found: {self.piper_path}")
-            
-            models = sorted([f for f in os.listdir(self.piper_path) if f.endswith(".onnx")])
-            self.ui.model_combo.addItems(models)
-            
-            if current_model in models:
-                self.ui.model_combo.setCurrentText(current_model)
-        except Exception as e:
-            self.log_message(f"[ERROR] {e}", "red")
-        
-        self.load_model_config(self.ui.model_combo.currentText())
-
-    def load_model_config(self, model_file: str):
-        current_speaker = self.ui.speaker_combo.currentData()
-        self.ui.speaker_combo.clear()
-        self.ui.speaker_combo.setEnabled(False)
-        
-        if not model_file:
-            self.ui.speaker_combo.addItem("Default (ID: 0)", 0)
-            return
-        
-        try:
-            with open(os.path.join(self.piper_path, model_file + ".json")) as f:
-                config = json.load(f)
-            
-            speaker_map = config.get('speaker_id_map', {})
-            if speaker_map and len(speaker_map) > 1:
-                for name, sid in sorted(speaker_map.items()):
-                    self.ui.speaker_combo.addItem(f"{name} (ID:{sid})", sid)
-                
-                idx = self.ui.speaker_combo.findData(current_speaker)
-                if idx != -1:
-                    self.ui.speaker_combo.setCurrentIndex(idx)
-                
-                self.ui.speaker_combo.setEnabled(True)
-                return
-        except Exception:
-            pass
-        
-        self.ui.speaker_combo.addItem("Default (ID: 0)", 0)
-
-    def is_multi_speaker(self, model_file: str):
-        return self.ui.speaker_combo.count() > 1 and self.ui.speaker_combo.isEnabled()
 
     def on_hotkey_toggle(self, enabled: bool):
         status = "active" if enabled else "inactive"
@@ -344,7 +282,7 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 self.log_message(f"[WARN] Could not restore window geometry: {e}", "orange")
 
-        self.scan_piper_models()
+        self.ui.scan_piper_models()
         
         saved_model = s.get('model')
         if saved_model:

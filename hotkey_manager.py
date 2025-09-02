@@ -1,7 +1,10 @@
 import sys
 import time
 import subprocess
-from pynput import keyboard
+try:
+    from pynput import keyboard
+except ImportError:
+    keyboard = None
 from PyQt5.QtCore import QObject, pyqtSignal
 
 class HotkeyManager(QObject):
@@ -20,6 +23,9 @@ class HotkeyManager(QObject):
         self._start_listener()
 
     def _start_listener(self):
+        if not keyboard:
+            self.log_message.emit("[WARN] pynput not found or display not available, hotkeys disabled.", "orange")
+            return
         try:
             self.listener = keyboard.Listener(on_press=self._on_hotkey_press)
             self.listener.start()
@@ -33,7 +39,7 @@ class HotkeyManager(QObject):
             except Exception as e:
                 self.log_message.emit(f"[WARN] Could not stop listener: {e}", "orange")
 
-    def _on_hotkey_press(self, key: keyboard.Key):
+    def _on_hotkey_press(self, key):
         now = time.time()
         if key == keyboard.Key.shift_l:
             if now - self.last_lshift_press_time < 0.4:

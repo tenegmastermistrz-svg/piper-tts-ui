@@ -1,4 +1,6 @@
-from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QPushButton, QLabel, QSlider, QHBoxLayout, QLineEdit, QGroupBox, QFormLayout, QComboBox, QDoubleSpinBox, QCheckBox, QTextEdit, QStackedWidget, QSpacerItem, QSizePolicy)
+import os
+import json
+from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QPushButton, QLabel, QSlider, QHBoxLayout, QLineEdit, QGroupBox, QFormLayout, QComboBox, QDoubleSpinBox, QCheckBox, QTextEdit, QStackedWidget, QSpacerItem, QSizePolicy, QFileDialog)
 from PyQt5.QtCore import Qt
 
 class UIManager:
@@ -327,3 +329,61 @@ class UIManager:
         main_layout.addLayout(status_bar)
 
         self.main_window.resize(520, 680)
+
+    def select_piper_path(self):
+        path = QFileDialog.getExistingDirectory(self.main_window, "Select Piper Models Directory", self.main_window.piper_path)
+        if path and os.path.isdir(path):
+            self.main_window.piper_path = path
+            self.main_window.log_message(f"[INFO] Piper path set to: {self.main_window.piper_path}")
+            self.scan_piper_models()
+
+    def scan_piper_models(self):
+        self.main_window.log_message(f"[INFO] Scanning '{self.main_window.piper_path}'...")
+        current_model = self.model_combo.currentText()
+        self.model_combo.clear()
+
+        try:
+            if not os.path.isdir(self.main_window.piper_path):
+                raise FileNotFoundError(f"Piper dir not found: {self.main_window.piper_path}")
+
+            models = sorted([f for f in os.listdir(self.main_window.piper_path) if f.endswith(".onnx")])
+            self.model_combo.addItems(models)
+
+            if current_model in models:
+                self.model_combo.setCurrentText(current_model)
+        except Exception as e:
+            self.main_window.log_message(f"[ERROR] {e}", "red")
+
+        self.load_model_config(self.model_combo.currentText())
+
+    def load_model_config(self, model_file: str):
+        current_speaker = self.speaker_combo.currentData()
+        self.speaker_combo.clear()
+        self.speaker_combo.setEnabled(False)
+
+        if not model_file:
+            self.speaker_combo.addItem("Default (ID: 0)", 0)
+            return
+
+        try:
+            with open(os.path.join(self.main_window.piper_path, model_file + ".json")) as f:
+                config = json.load(f)
+
+            speaker_map = config.get('speaker_id_map', {})
+            if speaker_map and len(speaker_map) > 1:
+                for name, sid in sorted(speaker_map.items()):
+                    self.speaker_combo.addItem(f"{name} (ID:{sid})", sid)
+
+                idx = self.speaker_combo.findData(current_speaker)
+                if idx != -1:
+                    self.speaker_combo.setCurrentIndex(idx)
+
+                self.speaker_combo.setEnabled(True)
+                return
+        except Exception:
+            pass
+
+        self.speaker_combo.addItem("Default (ID: 0)", 0)
+
+    def is_multi_speaker(self, model_file: str):
+        return self.speaker_combo.count() > 1 and self.speaker_combo.isEnabled()
