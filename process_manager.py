@@ -2,6 +2,7 @@ import os
 import sys
 import signal
 from PyQt5.QtCore import QObject, QProcess, pyqtSignal
+from audio_ducking_manager import AudioDuckingManager
 
 class ProcessManager(QObject):
     process_finished = pyqtSignal(int, QProcess.ExitStatus, bool)
@@ -13,6 +14,7 @@ class ProcessManager(QObject):
         self.proc = QProcess(self)
         self.was_stopped = False
         self.is_paused = False
+        self.audio_ducker = AudioDuckingManager(logger=self.log_message.emit)
 
         self.proc.readyReadStandardOutput.connect(self._handle_stdout)
         self.proc.readyReadStandardError.connect(self._handle_stderr)
@@ -39,10 +41,13 @@ class ProcessManager(QObject):
         # Using 'setsid' ensures that the process and its children are in their own process group,
         # which allows us to terminate them all at once.
         self.proc.start("setsid", ["bash", "-c", command])
+        if self.proc.waitForStarted():
+            self.audio_ducker.duck_audio(self.proc.processId())
 
     def stop(self):
         if self.proc.state() != QProcess.ProcessState.Running:
             return
+        self.audio_ducker.restore_audio()
         self.was_stopped = True
         self.log_message.emit("[INFO] Stop initiated.", "orange")
         self.status_update.emit("Stopping...", "running")
@@ -67,7 +72,9 @@ class ProcessManager(QObject):
                 self.is_paused = True
                 self.status_update.emit("Paused", "running")
                 self.log_message.emit("[INFO] Process paused.", "orange")
+                self.audio_ducker.restore_audio()
             else:
+                self.audio_ducker.duck_audio(self.proc.processId())
                 os.killpg(pgid, signal.SIGCONT)
                 self.is_paused = False
                 self.status_update.emit("Running...", "running")
@@ -76,6 +83,7 @@ class ProcessManager(QObject):
             self.log_message.emit(f"[ERROR] Could not toggle pause: {e}", "red")
 
     def _on_process_finished(self, code: int, status: QProcess.ExitStatus):
+        self.audio_ducker.restore_audio()
         self.is_paused = False
         self.process_finished.emit(code, status, self.was_stopped)
 
